@@ -180,6 +180,7 @@ class AwsS3Provider extends Provider implements ProviderInterface
             foreach ($assets as $file) {
                 try {
                     $this->console->writeln('<fg=cyan>'.'Uploading file path: '.$file->getRealpath().'</fg=cyan>');
+                    $currentFile = fopen($file->getRealPath(), 'r');
                     $command = $this->s3_client->getCommand('putObject', [
 
                         // the bucket name
@@ -187,7 +188,7 @@ class AwsS3Provider extends Provider implements ProviderInterface
                         // the path of the file on the server (CDN)
                         'Key' => $this->supplier['upload_folder'] . str_replace('\\', '/', $file->getPathName()),
                         // the path of the path locally
-                        'Body' => fopen($file->getRealPath(), 'r'),
+                        'Body' => $currentFile,
                         // the permission of the file
 
                         'ACL' => $this->acl,
@@ -197,6 +198,7 @@ class AwsS3Provider extends Provider implements ProviderInterface
                     ]);
 
                     $this->s3_client->execute($command);
+                    fclose($currentFile);
                 } catch (S3Exception $e) {
                     $this->console->writeln('<fg=red>Upload error: '.$e->getMessage().'</fg=red>');
                     return false;
@@ -280,7 +282,7 @@ class AwsS3Provider extends Provider implements ProviderInterface
             if (!isset($fileOnAWS['LastModified'])) return $item;
 
             // Check if size has changed and only then upload
-            if ($item->getSize() !== $fileOnAWS['Size']) {
+            if ($item->getSize() !== (int) $fileOnAWS['Size']) {
                 return $item;
             }
         });
